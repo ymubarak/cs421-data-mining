@@ -44,7 +44,7 @@ def svm_loss_naive(W, X, y, reg):
   dW /= num_train
   # Add regularization to the loss.
   loss += reg * np.sum(W * W)
-  dW += reg * np.sum(W * W)
+  dW += reg * W
 
   #############################################################################
   # TODO:                                                                     #
@@ -66,20 +66,22 @@ def svm_loss_vectorized(W, X, y, reg):
   Inputs and outputs are the same as svm_loss_naive.
   """
   loss = 0.0
-  dW = np.zeros(W.shape) # initialize the gradient as zero
+  # dW = np.zeros(W.shape) # initialize the gradient as zero
 
   #############################################################################
   # TODO:                                                                     #
   # Implement a vectorized version of the structured SVM loss, storing the    #
   # result in loss.                                                           #
   #############################################################################
+  # print(X)
   num_train = X.shape[0]
   scores = X.dot(W)
-  correct_class_scores = scores[np.arange(len(scores)), y].reshape(num_train, 1)
-  diff = scores - correct_class_scores
-  diff[diff==0] = -1
-  margins = diff + 1 # delta
-  loss = np.sum(margins[margins > 0])
+  correct_class_scores = scores[np.arange(num_train), y].reshape(num_train, 1)
+  margins = scores - correct_class_scores + 1 # delta
+  margins[np.arange(num_train), y] = 0 # reset corret values
+  margins[margins < 0] = 0
+  
+  loss = np.sum(margins)
   loss /= num_train
   loss += reg * np.sum(W * W)
 
@@ -97,18 +99,14 @@ def svm_loss_vectorized(W, X, y, reg):
   # to reuse some of the intermediate values that you used to compute the     #
   # loss.                                                                     #
   #############################################################################
-  margins[margins < 0] = 0
-  margins[margins > 0] = 1
-
-  num_classes = np.max(y)+1
-  yi_violations = margins.sum(axis=-1).reshape(num_train,1)
-  (yi_violations * X).sum(axis=0)
-  ji_violations = margins.sum(axis=0).reshape(num_classes,1)
-  dW.T = ji_violations * X
-  r = num_viloations * X
-  # print(r)
+  # convert margin matrix to a mask
+  margins[margins > 0] = 1.0
+  yi_violations = margins.sum(axis=-1)
+  margins[np.arange(num_train), y] = - yi_violations
+  
+  dW = X.T.dot(margins)
   dW /= num_train
-  dW += reg * np.sum(W * W)
+  dW += reg * W
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
