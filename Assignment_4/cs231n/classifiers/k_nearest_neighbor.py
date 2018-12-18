@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.spatial import distance
+# from scipy.spatial import distance
 from collections import Counter
 
 
@@ -47,7 +47,6 @@ class KNearestNeighbor(object):
     else:
       raise ValueError('Invalid value %d for num_loops' % num_loops)
 
-    print("distances are calculated")
     return self.predict_labels(dists, k=k)
 
   def compute_distances_two_loops(self, X):
@@ -69,7 +68,8 @@ class KNearestNeighbor(object):
     dists = np.zeros((num_test, num_train))
     for i in range(num_test):
       for j in range(num_train):
-            dists[i,j] = distance.euclidean(X[i], self.X_train[j])
+        diff = X[i] - self.X_train[j]
+        dists[i,j] = np.sqrt(diff.T.dot(diff))
     return dists
 
   def compute_distances_one_loop(self, X):
@@ -82,16 +82,18 @@ class KNearestNeighbor(object):
     num_test = X.shape[0]
     num_train = self.X_train.shape[0]
     dists = np.zeros((num_test, num_train))
+    q_2 = np.sum(np.power(self.X_train.T, 2), axis=0)
     for i in range(num_test):
       #######################################################################
       # TODO:                                                               #
       # Compute the l2 distance between the ith test point and all training #
       # points, and store the result in dists[i, :].                        #
       #######################################################################
-      # dists[i,:] = np.sqrt(np.sum(np.square(np.subtract(X[i], self.X_train)), axis=1))
-      func = lambda a, b: np.sqrt(np.sum(np.square(np.subtract(a, b))))
-      vfunc = np.vectorize(func, signature= '(m),(n)->()')
-      dists[i,:] = vfunc(self.X_train, X[i])
+      row = -2 * X[i].dot(self.X_train.T)
+      row += np.expand_dims(np.sum(np.power(X[i], 2)), axis=1)
+      row += q_2
+      dists[i] = np.sqrt(row) 
+
       #######################################################################
       #                         END OF YOUR CODE                            #
       #######################################################################
@@ -106,7 +108,7 @@ class KNearestNeighbor(object):
     """
     num_test = X.shape[0]
     num_train = self.X_train.shape[0]
-    dists = np.zeros((num_test, num_train)) 
+    # dists = np.zeros((num_test, num_train)) 
     #########################################################################
     # TODO:                                                                 #
     # Compute the l2 distance between all test points and all training      #
@@ -119,11 +121,12 @@ class KNearestNeighbor(object):
     # HINT: Try to formulate the l2 distance using matrix multiplication    #
     #       and two broadcast sums.                                         #
     #########################################################################
-    # dists = self.vect_2D_2D()(X, self.X_train)
-    func = lambda a, b: np.sqrt(np.sum(np.square(np.subtract(a, b))))
-    vfunc = np.vectorize(func, signature= '(m),(n)->()')
-    vfunc2 = np.vectorize(vfunc, signature= '(m),(n,m)->(n)')
-    dists = vfunc2(X, self.X_train)
+
+    dists = -2 * np.dot(X, self.X_train.T)
+    dists += np.expand_dims(np.sum(np.power(X, 2), axis=1), axis=1)
+    dists += np.sum(np.power(self.X_train.T, 2), axis=0)
+    dists = np.sqrt(dists)  
+
     #########################################################################
     #                         END OF YOUR CODE                              #
     #########################################################################
@@ -174,16 +177,3 @@ class KNearestNeighbor(object):
 
 
     return y_pred
-
-
-    # def vect_1D_2D(self):
-    #   func = distance.euclidean
-    #   vfunc = np.vectorize(func, signature= '(m),(n)->()')
-    #   return vfunc
-    
-    # def vect_2D_2D(self):
-    #   func = lambda a, b: np.sqrt(np.sum(np.square(np.subtract(a, b))))
-    #   vfunc = np.vectorize(func, signature= '(m),(n)->()')
-    #   vfunc2 = np.vectorize(vfunc, signature= '(m),(m,n)->(m)')
-    #   return vfunc2
-
